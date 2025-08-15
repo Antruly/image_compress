@@ -1,9 +1,3 @@
-
----
-
-### **2️⃣ README_zh.md（中文）**
-
-```markdown
 # ImageCompress 🎨🖼️
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -75,3 +69,4 @@ int main() {
 }
 
 ```
+
