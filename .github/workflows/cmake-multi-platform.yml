@@ -49,7 +49,7 @@ jobs:
       run: |
         if [[ "$RUNNER_OS" == "Linux" ]]; then
           sudo apt-get update
-          sudo apt-get install -y libpng-dev libjpeg-dev zlib1g-dev
+          sudo apt-get install -y libpng-dev libjpeg-dev
         elif [[ "$RUNNER_OS" == "macOS" ]]; then
           brew install libpng libjpeg
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
@@ -64,9 +64,10 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ matrix.config }} `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
             -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} `
-            -A "${{ matrix.cmake_arch }}"
+            -A "${{ matrix.cmake_arch }}" `
+            -DENABLE_SHARED_LIB=OFF
         else
-          cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+          cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DENABLE_SHARED_LIB=OFF
         fi
         echo "Configured CMake for ${{ matrix.os }} (${{ matrix.config }})" | tee -a $GITHUB_STEP_SUMMARY
       

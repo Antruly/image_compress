@@ -8,7 +8,7 @@ if(DEFINED ENV{VCPKG_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Using vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
-set(CMAKE_CXX_STANDARD 11)  # 更新为C++17
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 message(STATUS "Using C++11")
@@ -154,7 +154,7 @@ message(STATUS "jpeglib.h found at: ${JPEGLIB_H}")
 find_file(PNG_H png.h PATHS ${PNG_INCLUDE_DIRS} REQUIRED)
 message(STATUS "png.h found at: ${PNG_H}")
 
-find_file(ZLIB_H zlib.h PATHS ${ZLIB_INCLUDE_DIRS} REQUIRED)  # 修复路径变量
+find_file(ZLIB_H zlib.h PATHS ${ZLIB_INCLUDE_DIRS} REQUIRED)
 message(STATUS "zlib.h found at: ${ZLIB_H}")
 
 message(STATUS "JPEG found: ${JPEG_FOUND}")
@@ -170,7 +170,7 @@ message(STATUS "ZLIB includes: ${ZLIB_INCLUDE_DIRS}")
 message(STATUS "ZLIB libraries: ${ZLIB_LIBRARIES}")
 
 # 将 zlib 添加到 PNG 依赖中
-list(APPEND PNG_LIBRARIES ${ZLIB_LIBRARIES})  # 移除平台判断
+list(APPEND PNG_LIBRARIES ${ZLIB_LIBRARIES})
 
 # 确保我们链接的是静态库而不是 DLL
 foreach(lib IN LISTS PNG_LIBRARIES JPEG_LIBRARIES ZLIB_LIBRARIES)
@@ -216,6 +216,7 @@ target_compile_definitions(image_compress_static
         PNG_STATIC
         IMAGE_COMPRESS_STATIC
         IMAGE_COMPRESS_STATIC_BUILD
+        _CRT_SECURE_NO_WARNINGS  # 禁用安全警告
 )
 
 # 添加详细的链接信息
@@ -231,7 +232,7 @@ message(STATUS "Final include directories for image_compress_static: ${INCL_DIRS
 target_link_libraries(image_compress_static PRIVATE 
     ${PNG_LIBRARIES}
     ${JPEG_LIBRARIES}
-    ${ZLIB_LIBRARIES}  # 显式添加 ZLIB
+    ${ZLIB_LIBRARIES}
 )
 set_target_properties(image_compress_static PROPERTIES
     OUTPUT_NAME "image_compress_static"
@@ -240,50 +241,11 @@ set_target_properties(image_compress_static PROPERTIES
 )
 
 # -----------------------------
-# 动态库 target（可选）
-# -----------------------------
-if(ENABLE_SHARED_LIB)
-    add_library(image_compress SHARED ${SRC_FILES} ${HDR_FILES})
-    target_include_directories(image_compress
-        PUBLIC
-            ${CMAKE_CURRENT_SOURCE_DIR}/include
-        PRIVATE
-            ${PNG_INCLUDE_DIRS}
-            ${JPEG_INCLUDE_DIRS}
-            ${ZLIB_INCLUDE_DIRS}
-    )
-    # 定义 DLL 导出宏
-    target_compile_definitions(image_compress 
-        PRIVATE 
-            USE_LIBJPEG 
-            USE_LIBPNG 
-            IMAGE_COMPRESS_EXPORTS
-    )
-    target_link_libraries(image_compress PRIVATE 
-        ${PNG_LIBRARIES}
-        ${JPEG_LIBRARIES}
-        ${ZLIB_LIBRARIES}  # 显式添加 ZLIB
-    )
-    set_target_properties(image_compress PROPERTIES
-        OUTPUT_NAME "image_compress"
-        DEBUG_POSTFIX "d"
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-    )
-endif()
-
-# -----------------------------
 # 测试
 # -----------------------------
 if(BUILD_TESTS)
     add_executable(image_compress_test tests/test_image.cpp)
-    # 默认链接静态库
-    if(ENABLE_SHARED_LIB)
-        target_link_libraries(image_compress_test PRIVATE image_compress)
-    else()
-        target_link_libraries(image_compress_test PRIVATE image_compress_static)
-    endif()
+    target_link_libraries(image_compress_test PRIVATE image_compress_static)
     target_include_directories(image_compress_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
     set_target_properties(image_compress_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     enable_testing()
@@ -299,13 +261,5 @@ install(TARGETS image_compress_static
     RUNTIME DESTINATION bin
 )
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/ DESTINATION include)
-
-if(ENABLE_SHARED_LIB)
-    install(TARGETS image_compress
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-    )
-endif()
 
 message(STATUS "image_compress configuration completed.")
