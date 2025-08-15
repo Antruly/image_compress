@@ -32,42 +32,44 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    # 设置 vcpkg 环境
-    - name: Setup vcpkg
+    - name: Setup vcpkg (Windows)
       if: matrix.os == 'windows-latest'
-      shell: pwsh
       run: |
         git clone https://github.com/Microsoft/vcpkg.git
         cd vcpkg
         ./bootstrap-vcpkg.bat
-        $vcpkgRoot = (Resolve-Path ".").Path
-        echo "VCPKG_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Append
+        echo "VCPKG_ROOT=$pwd" | Out-File -FilePath $env:GITHUB_ENV -Append
         echo "VCPKG_DEFAULT_TRIPLET=${{ matrix.triplet }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-        echo "Using vcpkg: $vcpkgRoot, triplet: ${{ matrix.triplet }}" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-
+        echo "Using vcpkg: $pwd, triplet: ${{ matrix.triplet }}" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+    
     - name: Install dependencies
       run: |
         if [[ "$RUNNER_OS" == "Linux" ]]; then
           sudo apt-get update
-          sudo apt-get install -y libpng-dev libjpeg-dev
+          sudo apt-get install -y libpng-dev libjpeg-dev zlib1g-dev
+          echo "Installed libpng-dev, libjpeg-dev and zlib1g-dev on Ubuntu" | tee -a $GITHUB_STEP_SUMMARY
         elif [[ "$RUNNER_OS" == "macOS" ]]; then
           brew install libpng libjpeg
+          echo "Installed libpng and libjpeg via Homebrew" | tee -a $GITHUB_STEP_SUMMARY
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
           vcpkg/vcpkg install libpng libjpeg-turbo zlib --triplet ${{ matrix.triplet }}
+          echo "Installed libpng, libjpeg-turbo and zlib via vcpkg (triplet: ${{ matrix.triplet }})" | tee -a $GITHUB_STEP_SUMMARY
         fi
       shell: bash
       
     - name: Configure CMake
       run: |
         if [[ "$RUNNER_OS" == "Windows" ]]; then
+          # 对于 Windows，传递额外的参数以确保找到所有依赖
           cmake -B build `
             -DCMAKE_BUILD_TYPE=${{ matrix.config }} `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
-            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} `
             -A "${{ matrix.cmake_arch }}" `
-            -DENABLE_SHARED_LIB=OFF
+            -DZLIB_ROOT_DIR="$env:VCPKG_ROOT/installed/${{ matrix.triplet }}" `
+            --debug-output
         else
-          cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DENABLE_SHARED_LIB=OFF
+          # 对于 Linux/macOS，使用系统默认设置
+          cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }}
         fi
         echo "Configured CMake for ${{ matrix.os }} (${{ matrix.config }})" | tee -a $GITHUB_STEP_SUMMARY
       
