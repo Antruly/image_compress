@@ -1,0 +1,104 @@
+name: CMake Multi-Platform Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        config: [Debug, Release]
+        include:
+          - os: windows-latest
+            arch: x86
+            triplet: x86-windows-static
+            cmake_arch: Win32
+          - os: windows-latest
+            arch: x64
+            triplet: x64-windows-static
+            cmake_arch: x64
+          - os: ubuntu-latest
+            arch: x64
+            cmake_arch: ""
+          - os: macos-latest
+            arch: x64
+            cmake_arch: ""
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    # 设置 vcpkg 环境
+    - name: Setup vcpkg
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        ./bootstrap-vcpkg.bat
+        $vcpkgRoot = (Resolve-Path ".").Path
+        echo "VCPKG_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Append
+        echo "VCPKG_DEFAULT_TRIPLET=${{ matrix.triplet }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+        echo "Using vcpkg: $vcpkgRoot, triplet: ${{ matrix.triplet }}" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+    - name: Install dependencies
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          sudo apt-get update
+          sudo apt-get install -y libpng-dev libjpeg-dev
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew install libpng libjpeg
+        elif [[ "$RUNNER_OS" == "Windows" ]]; then
+          vcpkg/vcpkg install libpng libjpeg-turbo zlib --triplet ${{ matrix.triplet }}
+        fi
+      shell: bash
+      
+    - name: Configure CMake
+      run: |
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          cmake -B build `
+            -DCMAKE_BUILD_TYPE=${{ matrix.config }} `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} `
+            -A "${{ matrix.cmake_arch }}" `
+            -DENABLE_SHARED_LIB=OFF
+        else
+          cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DENABLE_SHARED_LIB=OFF
+        fi
+        echo "Configured CMake for ${{ matrix.os }} (${{ matrix.config }})" | tee -a $GITHUB_STEP_SUMMARY
+      
+    - name: Build
+      run: |
+        cmake --build build --config ${{ matrix.config }} --verbose
+        echo "Built project in ${{ matrix.config }} configuration" | tee -a $GITHUB_STEP_SUMMARY
+      
+    - name: Run tests
+      working-directory: build
+      run: |
+        ctest -C ${{ matrix.config }} --output-on-failure
+        echo "Ran tests for ${{ matrix.config }} configuration" | tee -a $GITHUB_STEP_SUMMARY
+        
+    - name: Upload build logs
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: build-logs-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.config }}
+        path: |
+          build/CMakeCache.txt
+          build/CMakeFiles/*.log
+          build/*.log
+          build/**/*.log
+        if-no-files-found: ignore
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-output-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.config }}
+        path: |
+          build/bin/**
+          build/lib/**
+        if-no-files-found: ignore
