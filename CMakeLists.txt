@@ -16,46 +16,135 @@ option(ENABLE_SHARED_LIB "Build dynamic library (DLL)" OFF)
 
 message(STATUS "Configuring image_compress (libjpeg-turbo + libpng + zlib + BMP builtin)")
 
-# 库路径
-if(MSVC)
-  if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(DEFAULT_LIBPNG_ROOT "C:/Program Files/libpng")
-    set(DEFAULT_ZLIB_ROOT "C:/Program Files/zlib")
-  else()
-    set(DEFAULT_LIBPNG_ROOT "C:/Program Files (x86)/libpng")
-    set(DEFAULT_ZLIB_ROOT "C:/Program Files (x86)/zlib")
-  endif()
-  set(DEFAULT_LIBJPEG_ROOT "C:/libjpeg-turbo")
-else()
-  set(DEFAULT_LIBPNG_ROOT "/usr")
-  set(DEFAULT_ZLIB_ROOT "/usr")
-  set(DEFAULT_LIBJPEG_ROOT "/usr")
+# 添加详细的构建信息输出
+message(STATUS "------------------------------------")
+message(STATUS "Build Configuration:")
+message(STATUS "  Generator: ${CMAKE_GENERATOR}")
+message(STATUS "  Platform: ${CMAKE_SYSTEM_NAME}")
+message(STATUS "  Architecture: ${CMAKE_SIZEOF_VOID_P} bits")
+message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "------------------------------------")
+
+# 处理 Windows 的 vcpkg 工具链
+if(WIN32)
+    # 优先使用环境变量中的 vcpkg 路径
+    if(DEFINED ENV{VCPKG_ROOT})
+        set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+            CACHE STRING "Vcpkg toolchain file")
+        message(STATUS "Using vcpkg toolchain: ${CMAKE_TOOLCHAIN_FILE}")
+    endif()
+    
+    # 设置库查找后缀 - 仅静态库
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib" ".a")
+    message(STATUS "Library search suffixes: ${CMAKE_FIND_LIBRARY_SUFFIXES}")
 endif()
 
-set(LIBJPEG_ROOT_DIR "${DEFAULT_LIBJPEG_ROOT}" CACHE PATH "Path to libjpeg(-turbo) root")
-set(LIBPNG_ROOT_DIR  "${DEFAULT_LIBPNG_ROOT}" CACHE PATH "Path to libpng root")
-set(ZLIB_ROOT_DIR     "${DEFAULT_ZLIB_ROOT}" CACHE PATH "Path to zlib root")
+# 查找 PNG 库 (跨平台)
+find_package(PNG REQUIRED)
+message(STATUS "PNG found: ${PNG_FOUND}")
+message(STATUS "PNG includes: ${PNG_INCLUDE_DIRS}")
+message(STATUS "PNG libraries: ${PNG_LIBRARIES}")
 
-set(JPEG_INCLUDE_DIR "${LIBJPEG_ROOT_DIR}/include")
-set(PNG_INCLUDE_DIR  "${LIBPNG_ROOT_DIR}/include")
-set(ZLIB_INCLUDE_DIR "${ZLIB_ROOT_DIR}/include")
+# 打印 PNG 的链接库信息
+if(TARGET PNG::PNG)
+    get_property(png_libs TARGET PNG::PNG PROPERTY INTERFACE_LINK_LIBRARIES)
+    message(STATUS "PNG link libraries: ${png_libs}")
+endif()
 
-if (MSVC)
-    set(JPEG_LIB_RELEASE "${LIBJPEG_ROOT_DIR}/lib/jpeg-static.lib")
-    set(JPEG_LIB_DEBUG   "${LIBJPEG_ROOT_DIR}/lib/jpeg-static.lib")
-
-    set(PNG_LIB_RELEASE  "${LIBPNG_ROOT_DIR}/lib/libpng16_static.lib")
-    set(PNG_LIB_DEBUG    "${LIBPNG_ROOT_DIR}/lib/libpng16_staticd.lib")
-
-    set(ZLIB_LIB_RELEASE "${ZLIB_ROOT_DIR}/lib/zlibstatic.lib")
-    set(ZLIB_LIB_DEBUG   "${ZLIB_ROOT_DIR}/lib/zlibstaticd.lib")
+# 增强 JPEG 查找逻辑 (解决找不到的问题)
+if(WIN32)
+    # Windows 平台需要更明确的查找逻辑
+    find_path(JPEG_INCLUDE_DIR jpeglib.h
+        PATHS
+        "$ENV{VCPKG_ROOT}/installed/x64-windows-static/include"
+        "$ENV{VCPKG_ROOT}/installed/x86-windows-static/include"
+        "$ENV{VCPKG_ROOT}/installed/x64-windows/include"
+        "$ENV{VCPKG_ROOT}/installed/x86-windows/include"
+        "C:/libjpeg-turbo/include"
+        "C:/Program Files/libjpeg-turbo/include"
+        "C:/Program Files (x86)/libjpeg-turbo/include"
+        DOC "Path to JPEG include directory"
+    )
+    
+    find_library(JPEG_LIBRARY_RELEASE
+        NAMES jpeg-static turbojpeg-static jpeg libjpeg-static
+        PATHS
+        "$ENV{VCPKG_ROOT}/installed/x64-windows-static/lib"
+        "$ENV{VCPKG_ROOT}/installed/x86-windows-static/lib"
+        "$ENV{VCPKG_ROOT}/installed/x64-windows/lib"
+        "$ENV{VCPKG_ROOT}/installed/x86-windows/lib"
+        "C:/libjpeg-turbo/lib"
+        "C:/Program Files/libjpeg-turbo/lib"
+        "C:/Program Files (x86)/libjpeg-turbo/lib"
+        DOC "Path to JPEG release library"
+    )
+    
+    find_library(JPEG_LIBRARY_DEBUG
+        NAMES jpeg-staticd turbojpeg-staticd jpegd libjpeg-staticd
+        PATHS
+        "$ENV{VCPKG_ROOT}/installed/x64-windows-static/debug/lib"
+        "$ENV{VCPKG_ROOT}/installed/x86-windows-static/debug/lib"
+        "$ENV{VCPKG_ROOT}/installed/x64-windows/debug/lib"
+        "$ENV{VCPKG_ROOT}/installed/x86-windows/debug/lib"
+        "C:/libjpeg-turbo/lib"
+        "C:/Program Files/libjpeg-turbo/lib"
+        "C:/Program Files (x86)/libjpeg-turbo/lib"
+        DOC "Path to JPEG debug library"
+    )
+    
+    if(JPEG_INCLUDE_DIR AND (JPEG_LIBRARY_RELEASE OR JPEG_LIBRARY_DEBUG))
+        set(JPEG_FOUND TRUE)
+        set(JPEG_INCLUDE_DIR ${JPEG_INCLUDE_DIR})
+        
+        # 如果只找到一种配置的库，使用相同的库作为两种配置
+        if(NOT JPEG_LIBRARY_RELEASE)
+            set(JPEG_LIBRARY_RELEASE ${JPEG_LIBRARY_DEBUG})
+        endif()
+        if(NOT JPEG_LIBRARY_DEBUG)
+            set(JPEG_LIBRARY_DEBUG ${JPEG_LIBRARY_RELEASE})
+        endif()
+        
+        set(JPEG_LIBRARIES
+            optimized ${JPEG_LIBRARY_RELEASE}
+            debug ${JPEG_LIBRARY_DEBUG}
+        )
+        message(STATUS "Found JPEG: ${JPEG_LIBRARIES}")
+    else()
+        message(FATAL_ERROR "JPEG library not found on Windows. Please install libjpeg-turbo via vcpkg")
+    endif()
 else()
-    find_library(JPEG_LIB_RELEASE NAMES jpeg turbojpeg libjpeg)
-    set(JPEG_LIB_DEBUG ${JPEG_LIB_RELEASE})
-    find_library(PNG_LIB_RELEASE  NAMES png png16 libpng libpng16)
-    set(PNG_LIB_DEBUG ${PNG_LIB_RELEASE})
-    find_library(ZLIB_LIB_RELEASE NAMES z zlib zlibstatic zlib1)
-    set(ZLIB_LIB_DEBUG ${ZLIB_LIB_RELEASE})
+    # Linux/macOS 使用标准查找
+    find_package(JPEG REQUIRED)
+    message(STATUS "JPEG found: ${JPEG_FOUND}")
+    message(STATUS "JPEG includes: ${JPEG_INCLUDE_DIR}")
+    message(STATUS "JPEG libraries: ${JPEG_LIBRARIES}")
+endif()
+
+# 添加详细输出
+if(WIN32)
+    message(STATUS "JPEG include dir: ${JPEG_INCLUDE_DIR}")
+    message(STATUS "JPEG release lib: ${JPEG_LIBRARY_RELEASE}")
+    message(STATUS "JPEG debug lib: ${JPEG_LIBRARY_DEBUG}")
+endif()
+
+# 处理 Windows 的特殊依赖 (zlib)
+if(WIN32)
+    # 确保只查找静态库
+    set(ZLIB_USE_STATIC_LIBS ON)
+    find_package(ZLIB REQUIRED)
+    message(STATUS "ZLIB found: ${ZLIB_FOUND}")
+    message(STATUS "ZLIB includes: ${ZLIB_INCLUDE_DIRS}")
+    message(STATUS "ZLIB libraries: ${ZLIB_LIBRARIES}")
+    
+    # 将 zlib 添加到 PNG 依赖中
+    list(APPEND PNG_LIBRARIES ${ZLIB_LIBRARIES})
+    
+    # 确保我们链接的是静态库而不是 DLL
+    foreach(lib IN LISTS PNG_LIBRARIES JPEG_LIBRARIES ZLIB_LIBRARIES)
+        if(lib MATCHES "\\.dll$")
+            message(WARNING "Found DLL in libraries: ${lib} - this may cause linking issues")
+        endif()
+    endforeach()
 endif()
 
 set(SRC_FILES
@@ -80,19 +169,31 @@ set(HDR_FILES
 # 静态库 target
 # -----------------------------
 add_library(image_compress_static STATIC ${SRC_FILES} ${HDR_FILES})
-add_definitions(-DPNG_STATIC)
 target_include_directories(image_compress_static
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${PNG_INCLUDE_DIRS}
         ${JPEG_INCLUDE_DIR}
-        ${PNG_INCLUDE_DIR}
-        ${ZLIB_INCLUDE_DIR}
 )
-target_compile_definitions(image_compress_static PRIVATE USE_LIBJPEG USE_LIBPNG)
-set(JPEG_LINK "$<$<CONFIG:Debug>:${JPEG_LIB_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${JPEG_LIB_RELEASE}>")
-set(PNG_LINK  "$<$<CONFIG:Debug>:${PNG_LIB_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${PNG_LIB_RELEASE}>")
-set(ZLIB_LINK "$<$<CONFIG:Debug>:${ZLIB_LIB_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${ZLIB_LIB_RELEASE}>")
-target_link_libraries(image_compress_static PRIVATE ${JPEG_LINK} ${PNG_LINK} ${ZLIB_LINK})
+target_compile_definitions(image_compress_static 
+    PRIVATE 
+        USE_LIBJPEG 
+        USE_LIBPNG 
+        PNG_STATIC
+)
+
+# 添加详细的链接信息
+message(STATUS "Linking static library with:")
+message(STATUS "  PNG libraries: ${PNG_LIBRARIES}")
+message(STATUS "  JPEG libraries: ${JPEG_LIBRARIES}")
+if(WIN32)
+    message(STATUS "  ZLIB libraries: ${ZLIB_LIBRARIES}")
+endif()
+
+target_link_libraries(image_compress_static PRIVATE 
+    ${PNG_LIBRARIES}
+    ${JPEG_LIBRARIES}
+)
 set_target_properties(image_compress_static PROPERTIES
     OUTPUT_NAME "image_compress_static"
     DEBUG_POSTFIX "d"
@@ -107,13 +208,20 @@ if(ENABLE_SHARED_LIB)
     target_include_directories(image_compress
         PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${PNG_INCLUDE_DIRS}
             ${JPEG_INCLUDE_DIR}
-            ${PNG_INCLUDE_DIR}
-            ${ZLIB_INCLUDE_DIR}
     )
     # 定义 DLL 导出宏
-    target_compile_definitions(image_compress PRIVATE USE_LIBJPEG USE_LIBPNG IMAGE_COMPRESS_EXPORTS)
-    target_link_libraries(image_compress PRIVATE ${JPEG_LINK} ${PNG_LINK} ${ZLIB_LINK})
+    target_compile_definitions(image_compress 
+        PRIVATE 
+            USE_LIBJPEG 
+            USE_LIBPNG 
+            IMAGE_COMPRESS_EXPORTS
+    )
+    target_link_libraries(image_compress PRIVATE 
+        ${PNG_LIBRARIES}
+        ${JPEG_LIBRARIES}
+    )
     set_target_properties(image_compress PROPERTIES
         OUTPUT_NAME "image_compress"
         DEBUG_POSTFIX "d"
