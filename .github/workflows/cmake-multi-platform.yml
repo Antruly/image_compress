@@ -1,0 +1,49 @@
+name: CMake Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: ubuntu-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+          - os: windows-latest
+            c_compiler: cl
+            cpp_compiler: cl
+        build_type: [Release]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libjpeg-turbo8-dev libpng-dev zlib1g-dev
+
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        git clone https://github.com/microsoft/vcpkg.git C:/vcpkg
+        C:/vcpkg/bootstrap-vcpkg.bat
+        C:/vcpkg/vcpkg install libjpeg-turbo:x64-windows libpng:x64-windows zlib:x64-windows
+
+    - name: Configure CMake
+      run: cmake -B build -S . -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+
+    - name: Build
+      run: cmake --build build --config ${{ matrix.build_type }}
+
+    - name: Test
+      run: ctest --output-on-failure --build-config ${{ matrix.build_type }} --test-dir build
