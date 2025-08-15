@@ -321,9 +321,9 @@ target_include_directories(image_compress_static
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE  # 依赖头文件设为私有
-        ${PNG_INCLUDE_DIRS}
-        ${JPEG_INCLUDE_DIR}
-        ${ZLIB_INCLUDE_DIRS}
+        "${PNG_INCLUDE_DIRS}"
+        "${JPEG_INCLUDE_DIR}"
+        "${ZLIB_INCLUDE_DIRS}"
 )
 target_compile_definitions(image_compress_static 
     PRIVATE 
@@ -331,6 +331,7 @@ target_compile_definitions(image_compress_static
         USE_LIBPNG 
         PNG_STATIC
         IMAGE_COMPRESS_STATIC  # 静态库定义
+        IMAGE_COMPRESS_STATIC_BUILD  # 额外的静态构建定义
 )
 
 # 添加详细的链接信息
@@ -338,6 +339,10 @@ message(STATUS "Linking static library with:")
 message(STATUS "  PNG libraries: ${PNG_LIBRARIES}")
 message(STATUS "  JPEG libraries: ${JPEG_LIBRARIES}")
 message(STATUS "  ZLIB libraries: ${ZLIB_LIBRARIES}")
+
+# 打印最终包含路径
+get_target_property(INCL_DIRS image_compress_static INCLUDE_DIRECTORIES)
+message(STATUS "Final include directories for image_compress_static: ${INCL_DIRS}")
 
 target_link_libraries(image_compress_static PRIVATE 
     ${PNG_LIBRARIES}
@@ -358,9 +363,9 @@ if(ENABLE_SHARED_LIB)
         PUBLIC
             ${CMAKE_CURRENT_SOURCE_DIR}/include
         PRIVATE  # 依赖头文件设为私有
-            ${PNG_INCLUDE_DIRS}
-            ${JPEG_INCLUDE_DIR}
-            ${ZLIB_INCLUDE_DIRS}
+            "${PNG_INCLUDE_DIRS}"
+            "${JPEG_INCLUDE_DIR}"
+            "${ZLIB_INCLUDE_DIRS}"
     )
     # 定义 DLL 导出宏
     target_compile_definitions(image_compress 

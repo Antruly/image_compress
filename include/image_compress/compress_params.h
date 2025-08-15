@@ -22,22 +22,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-// 显式处理静态库场景（可选）
-#ifdef _WIN32
-#if defined(IMAGE_COMPRESS_STATIC) // 静态库模式
+#if defined(IMAGE_COMPRESS_STATIC) || defined(IMAGE_COMPRESS_STATIC_BUILD)
 #define IMAGE_COMPRESS_API
 #elif defined(IMAGE_COMPRESS_EXPORTS)
 #define IMAGE_COMPRESS_API __declspec(dllexport)
 #else
 #define IMAGE_COMPRESS_API __declspec(dllimport)
-#endif
-#else
-#if defined(IMAGE_COMPRESS_STATIC)
-#define IMAGE_COMPRESS_API
-#else
-#define IMAGE_COMPRESS_API                                                     \
-  __attribute__((visibility("default"))) // Linux/macOS 动态库导出
-#endif
 #endif
 
 namespace imgc {
