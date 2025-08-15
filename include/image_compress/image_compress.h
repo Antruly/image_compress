@@ -22,12 +22,11 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-#include <cstdint>
-#include <vector>
-namespace imgc {
-struct ImageRGBA {
-  int width = 0;
-  int height = 0;
-  std::vector<uint8_t> pixels; // RGBA
-};
-} // namespace imgc
+#include <image_compress/image_compress_version.h>
+#include <image_compress/image_converter.h>
+#include <image_compress/bmp_compressor.h>
+#include <image_compress/jpeg_compressor.h>
+#include <image_compress/png_compressor.h>
+#include <image_compress/i_image_compressor.h>
+#include <image_compress/compress_params.h>
+#include <image_compress/image_types.h>

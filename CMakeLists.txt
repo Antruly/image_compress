@@ -65,6 +65,8 @@ set(SRC_FILES
     src/bmp_compressor.cpp
 )
 set(HDR_FILES
+    include/image_compress/image_compress.h
+    include/image_compress/image_compress_version.h
     include/image_compress/compress_params.h
     include/image_compress/i_image_compressor.h
     include/image_compress/image_types.h
@@ -125,7 +127,7 @@ endif()
 # 测试
 # -----------------------------
 if(BUILD_TESTS)
-    add_executable(image_compress_test tests/main.cpp)
+    add_executable(image_compress_test tests/test_image.cpp)
     # 默认链接静态库
     if(ENABLE_SHARED_LIB)
         target_link_libraries(image_compress_test PRIVATE image_compress)
