@@ -14,10 +14,6 @@ jobs:
         config: [Debug, Release]
         include:
           - os: windows-latest
-            arch: x86
-            triplet: x86-windows-static
-            cmake_arch: Win32
-          - os: windows-latest
             arch: x64
             triplet: x64-windows-static
             cmake_arch: x64
@@ -32,43 +28,51 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    # 设置 vcpkg 环境 (仅 Windows)
     - name: Setup vcpkg (Windows)
       if: matrix.os == 'windows-latest'
+      shell: pwsh
       run: |
+        # 克隆 vcpkg 仓库
         git clone https://github.com/Microsoft/vcpkg.git
         cd vcpkg
-        ./bootstrap-vcpkg.bat
-        echo "VCPKG_ROOT=$pwd" | Out-File -FilePath $env:GITHUB_ENV -Append
+        
+        # 引导 vcpkg
+        .\bootstrap-vcpkg.bat -disableMetrics
+        
+        # 设置环境变量
+        $vcpkgRoot = (Get-Item -Path ".\").FullName
+        echo "VCPKG_ROOT=$vcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Append
         echo "VCPKG_DEFAULT_TRIPLET=${{ matrix.triplet }}" | Out-File -FilePath $env:GITHUB_ENV -Append
-        echo "Using vcpkg: $pwd, triplet: ${{ matrix.triplet }}" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-    
+        echo "Using vcpkg: $vcpkgRoot, triplet: ${{ matrix.triplet }}" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
     - name: Install dependencies
       run: |
         if [[ "$RUNNER_OS" == "Linux" ]]; then
           sudo apt-get update
           sudo apt-get install -y libpng-dev libjpeg-dev zlib1g-dev
-          echo "Installed libpng-dev, libjpeg-dev and zlib1g-dev on Ubuntu" | tee -a $GITHUB_STEP_SUMMARY
         elif [[ "$RUNNER_OS" == "macOS" ]]; then
           brew install libpng libjpeg
-          echo "Installed libpng and libjpeg via Homebrew" | tee -a $GITHUB_STEP_SUMMARY
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
-          vcpkg/vcpkg install libpng libjpeg-turbo zlib --triplet ${{ matrix.triplet }}
-          echo "Installed libpng, libjpeg-turbo and zlib via vcpkg (triplet: ${{ matrix.triplet }})" | tee -a $GITHUB_STEP_SUMMARY
+          # 安装必要的库
+          .\vcpkg\vcpkg install libpng libjpeg-turbo zlib --triplet ${{ matrix.triplet }}
+          
+          # 列出安装的文件以验证
+          echo "Installed files in vcpkg:"
+          ls "$env:VCPKG_ROOT/installed/${{ matrix.triplet }}/include"
+          ls "$env:VCPKG_ROOT/installed/${{ matrix.triplet }}/lib"
         fi
       shell: bash
       
     - name: Configure CMake
       run: |
         if [[ "$RUNNER_OS" == "Windows" ]]; then
-          # 对于 Windows，传递额外的参数以确保找到所有依赖
           cmake -B build `
             -DCMAKE_BUILD_TYPE=${{ matrix.config }} `
             -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
-            -A "${{ matrix.cmake_arch }}" `
-            -DZLIB_ROOT_DIR="$env:VCPKG_ROOT/installed/${{ matrix.triplet }}" `
-            --debug-output
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} `
+            -A "${{ matrix.cmake_arch }}"
         else
-          # 对于 Linux/macOS，使用系统默认设置
           cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }}
         fi
         echo "Configured CMake for ${{ matrix.os }} (${{ matrix.config }})" | tee -a $GITHUB_STEP_SUMMARY
@@ -85,7 +89,7 @@ jobs:
         echo "Ran tests for ${{ matrix.config }} configuration" | tee -a $GITHUB_STEP_SUMMARY
         
     - name: Upload build logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: build-logs-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.config }}
@@ -97,7 +101,7 @@ jobs:
         if-no-files-found: ignore
         
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: build-output-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.config }}
         path: |
