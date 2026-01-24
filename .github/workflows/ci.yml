@@ -42,7 +42,22 @@ jobs:
         # Windows runners usually have these libraries pre-installed
         # If needed, install additional dependencies here
 
-    - name: Configure CMake
+    - name: Install vcpkg on Windows
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        git clone https://github.com/microsoft/vcpkg.git vcpkg
+        .\vcpkg\bootstrap-vcpkg.bat
+        .\vcpkg\vcpkg.exe install libjpeg-turbo:${{ matrix.triplet }}
+
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
+
+    - name: Configure CMake (non-Windows)
+      if: runner.os != 'Windows'
       run: |
         mkdir build
         cd build
