@@ -22,12 +22,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-#if defined(IMAGE_COMPRESS_STATIC) || defined(IMAGE_COMPRESS_STATIC_BUILD)
-#define IMAGE_COMPRESS_API
-#elif defined(IMAGE_COMPRESS_EXPORTS)
-#define IMAGE_COMPRESS_API __declspec(dllexport)
+#if defined(_WIN32) || defined(_WIN64)
+    #if defined(IMAGE_COMPRESS_STATIC) || defined(IMAGE_COMPRESS_STATIC_BUILD)
+    #define IMAGE_COMPRESS_API
+    #elif defined(IMAGE_COMPRESS_EXPORTS)
+    #define IMAGE_COMPRESS_API __declspec(dllexport)
+    #else
+    #define IMAGE_COMPRESS_API __declspec(dllimport)
+    #endif
 #else
-#define IMAGE_COMPRESS_API __declspec(dllimport)
+    #define IMAGE_COMPRESS_API
 #endif
 
 namespace imgc {
