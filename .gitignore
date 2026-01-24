@@ -1,0 +1,34 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# Build output directories
+bin/
+lib/
+
+# Test output files
+*.jpg
+*.png
+*.bmp
+*.bin
+input.*
+out_*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+CMakeLists_old.txt
+CMakeLists_new.txt
+temp.txt

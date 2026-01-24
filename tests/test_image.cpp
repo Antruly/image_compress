@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 /*
 MIT License
 
@@ -141,12 +141,11 @@ int main() {
     p.format = compress_params::Format::JPEG;
     p.quality = 90;
     std::vector<uint8_t> out;
-    int s = converter.convertFileToMemory("input.jpg", out,
-                                          p); // <-- 正确传文件路径
-    bool ok = (s > 0) && write_file("out_fm.jpg", out);
+    int s = converter.convertFileToMemory("input.jpg", out, p);
+    bool success = (s > 0) && write_file("out_fm.jpg", out);
     std::cout << "[File->Memory JPEG] size=" << s
-              << (ok ? " [PASS]" : " [FAIL]") << std::endl;
-    all_pass &= ok;
+              << (success ? " [PASS]" : " [FAIL]") << std::endl;
+    all_pass &= success;
   }
 
   // ----------------- Memory->Memory -----------------
