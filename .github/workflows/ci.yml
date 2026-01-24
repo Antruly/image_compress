@@ -45,9 +45,24 @@ jobs:
         # Windows runners usually have these libraries pre-installed
         # If needed, install additional dependencies here
 
+    - name: Cache vcpkg packages (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/cache@v4
+      with:
+        path: |
+          vcpkg/packages
+          vcpkg/archives
+          vcpkg/downloads
+          vcpkg/installed
+        key: ${{ runner.os }}-vcpkg-${{ matrix.triplet }}-${{ hashFiles('.github/workflows/ci.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-${{ matrix.triplet }}-
+
     - name: Install vcpkg on Windows
       if: runner.os == 'Windows'
       shell: powershell
+      env:
+        VCPKG_ROOT: ${{ github.workspace }}\vcpkg
       run: |
         git clone https://github.com/microsoft/vcpkg.git vcpkg
         .\vcpkg\bootstrap-vcpkg.bat
@@ -64,8 +79,11 @@ jobs:
           # matrix.generator_platform is expanded by Actions runner; assign as literal string
           $arch = '${{ matrix.generator_platform }}'
         }
-        Write-Host \"Using generator platform: $arch\"
-        cmake -S . -B build -A $arch -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=\"${{github.workspace}}\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake\" -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
+        Write-Host "Using generator platform: $arch"
+        # Build a forward-slash vcpkg toolchain path to avoid PowerShell escaping/backslash issues
+        $vcpkgToolchain = "${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        Write-Host "Using vcpkg toolchain: $vcpkgToolchain"
+        cmake -S . -B build -A $arch -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
 
     - name: Configure CMake (non-Windows)
       if: runner.os != 'Windows'
