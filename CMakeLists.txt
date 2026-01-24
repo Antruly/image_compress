@@ -40,8 +40,15 @@ if(NOT DEFINED VCPKG_TARGET_TRIPLET)
 endif()
 
 # 查找依赖
-find_package(libjpeg-turbo CONFIG REQUIRED)
-find_package(PNG CONFIG REQUIRED)
+if(WIN32)
+    # Windows: 使用vcpkg
+    find_package(libjpeg-turbo CONFIG REQUIRED)
+    find_package(PNG CONFIG REQUIRED)
+else()
+    # Linux/macOS: 使用系统包
+    find_package(JPEG REQUIRED)
+    find_package(PNG REQUIRED)
+endif()
 find_package(ZLIB REQUIRED)
 
 message(STATUS "Dependencies found")
@@ -64,7 +71,11 @@ set(HDR_FILES
 if(ENABLE_STATIC_LIB)
     add_library(image_compress_static STATIC ${SRC_FILES} ${HDR_FILES})
     target_include_directories(image_compress_static PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-    target_link_libraries(image_compress_static PRIVATE libjpeg-turbo::jpeg-static PNG::png_static ZLIB::ZLIB)
+    target_link_libraries(image_compress_static PRIVATE
+        $<IF:$<BOOL:${WIN32}>,libjpeg-turbo::jpeg-static,JPEG::JPEG>
+        $<IF:$<BOOL:${WIN32}>,PNG::png_static,PNG::PNG>
+        ZLIB::ZLIB
+    )
     target_compile_definitions(image_compress_static PRIVATE USE_LIBJPEG USE_LIBPNG PNG_STATIC IMAGE_COMPRESS_STATIC IMAGE_COMPRESS_STATIC_BUILD)
     set_target_properties(image_compress_static PROPERTIES OUTPUT_NAME "image_compress_static" ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/../lib")
 endif()
@@ -73,7 +84,11 @@ endif()
 if(ENABLE_SHARED_LIB)
     add_library(image_compress SHARED ${SRC_FILES} ${HDR_FILES})
     target_include_directories(image_compress PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-    target_link_libraries(image_compress PRIVATE libjpeg-turbo::jpeg-static PNG::png_static ZLIB::ZLIB)
+    target_link_libraries(image_compress PRIVATE
+        $<IF:$<BOOL:${WIN32}>,libjpeg-turbo::jpeg-static,JPEG::JPEG>
+        $<IF:$<BOOL:${WIN32}>,PNG::png_static,PNG::PNG>
+        ZLIB::ZLIB
+    )
     target_compile_definitions(image_compress PRIVATE USE_LIBJPEG USE_LIBPNG IMAGE_COMPRESS_EXPORTS)
     set_target_properties(image_compress PROPERTIES
         OUTPUT_NAME "image_compress"
