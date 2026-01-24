@@ -36,12 +36,11 @@ jobs:
         brew update
         brew install libjpeg libpng zlib cmake
 
-    - name: Setup vcpkg on Windows
+    - name: Install dependencies on Windows
       if: runner.os == 'Windows'
-      uses: microsoft/setup-vcpkg@v1
-      with:
-        vcpkg-version: '2024.12.16'
-        vcpkg-triplet: ${{ matrix.triplet }}
+      run: |
+        # Windows runners usually have these libraries pre-installed
+        # If needed, install additional dependencies here
 
     - name: Configure CMake
       run: |
