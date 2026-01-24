@@ -46,11 +46,11 @@ ImageFormat detectImageFormat(const uint8_t *data, size_t size) {
 static std::unique_ptr<i_image_compressor> makeComp(compress_params::Format f) {
   switch (f) {
   case compress_params::Format::JPEG:
-    return std::make_unique<jpeg_compressor>();
+    return std::unique_ptr<i_image_compressor>(new jpeg_compressor());
   case compress_params::Format::PNG:
-    return std::make_unique<png_compressor>();
+    return std::unique_ptr<i_image_compressor>(new png_compressor());
   case compress_params::Format::BMP:
-    return std::make_unique<bmp_compressor>();
+    return std::unique_ptr<i_image_compressor>(new bmp_compressor());
   default:
     return nullptr;
   }
@@ -79,11 +79,11 @@ int image_converter::convertMemory(const uint8_t *inputBuffer, size_t inputSize,
   if (needConvert) {
     std::unique_ptr<i_image_compressor> inComp;
     if (inFmt == ImageFormat::JPEG)
-      inComp = std::make_unique<jpeg_compressor>();
+      inComp = std::unique_ptr<i_image_compressor>(new jpeg_compressor());
     else if (inFmt == ImageFormat::PNG)
-      inComp = std::make_unique<png_compressor>();
+      inComp = std::unique_ptr<i_image_compressor>(new png_compressor());
     else if (inFmt == ImageFormat::BMP)
-      inComp = std::make_unique<bmp_compressor>();
+      inComp = std::unique_ptr<i_image_compressor>(new bmp_compressor());
     else
       return -1;
     ImageRGBA rgba;
