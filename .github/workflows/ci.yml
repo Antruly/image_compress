@@ -58,12 +58,14 @@ jobs:
       shell: powershell
       run: |
         # Use generator platform when provided (e.g., Win32 for x86)
-        if ($env:GENERATOR_PLATFORM) {
+        if ($env:GENERATOR_PLATFORM -and $env:GENERATOR_PLATFORM -ne '') {
           $arch = $env:GENERATOR_PLATFORM
         } else {
-          $arch = \"${{ matrix.generator_platform }}\"
+          # matrix.generator_platform is expanded by Actions runner; assign as literal string
+          $arch = '${{ matrix.generator_platform }}'
         }
-        cmake -S . -B build -A $arch -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
+        Write-Host \"Using generator platform: $arch\"
+        cmake -S . -B build -A $arch -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=\"${{github.workspace}}\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake\" -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
 
     - name: Configure CMake (non-Windows)
       if: runner.os != 'Windows'
