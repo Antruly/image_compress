@@ -26,6 +26,7 @@ SOFTWARE.
 #include <png.h>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 namespace imgc {
 struct MemReaderState {
   const uint8_t *data;

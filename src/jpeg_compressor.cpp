@@ -28,6 +28,7 @@ SOFTWARE.
 #include <jpeglib.h>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 namespace imgc {
 bool jpeg_compressor::decodeToRGBA(const uint8_t *inputBuffer, size_t inputSize,
                                    ImageRGBA &outRGBA) {

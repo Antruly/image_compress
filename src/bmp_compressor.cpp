@@ -25,6 +25,7 @@ SOFTWARE.
 #include <cstring>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 namespace imgc {
 #pragma pack(push, 1)
 struct BMPFileHeader {
