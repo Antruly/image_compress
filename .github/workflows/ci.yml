@@ -70,15 +70,37 @@ jobs:
           Write-Host "Cloning vcpkg..."
           git clone https://github.com/microsoft/vcpkg.git $vcpkgDir
         } else {
-          Write-Host "vcpkg directory already exists, skipping clone."
+          Write-Host "vcpkg directory exists (possibly from cache)."
+          $hasBootstrap = Test-Path (Join-Path $vcpkgDir 'bootstrap-vcpkg.bat')
+          $hasExe = Test-Path (Join-Path $vcpkgDir 'vcpkg.exe')
+          if (-not ($hasBootstrap -or $hasExe)) {
+            Write-Host "Cached vcpkg folder missing bootstrap/vcpkg.exe. Removing and re-cloning..."
+            Remove-Item -Recurse -Force $vcpkgDir
+            git clone https://github.com/microsoft/vcpkg.git $vcpkgDir
+          } else {
+            Write-Host "vcpkg contents look OK."
+          }
         }
-        if (-not (Test-Path (Join-Path $vcpkgDir 'vcpkg.exe'))) {
-          Write-Host "Bootstrapping vcpkg..."
-          & (Join-Path $vcpkgDir 'bootstrap-vcpkg.bat')
+
+        $bootstrap = Join-Path $vcpkgDir 'bootstrap-vcpkg.bat'
+        $vcpkgExe = Join-Path $vcpkgDir 'vcpkg.exe'
+        if (-not (Test-Path $vcpkgExe)) {
+          if (Test-Path $bootstrap) {
+            Write-Host "Bootstrapping vcpkg (via cmd)..."
+            cmd.exe /c "`"$bootstrap`""
+          } else {
+            Write-Host "No bootstrap script found; attempting to run vcpkg.exe directly if present."
+          }
         } else {
-          Write-Host "vcpkg.exe already present, skipping bootstrap."
+          Write-Host "vcpkg.exe present, skipping bootstrap."
         }
-        & (Join-Path $vcpkgDir 'vcpkg.exe') install libjpeg-turbo:${{ matrix.triplet }} libpng:${{ matrix.triplet }} zlib:${{ matrix.triplet }}
+
+        if (-not (Test-Path $vcpkgExe)) {
+          Write-Error "vcpkg.exe not found after bootstrap. Failing."
+          exit 1
+        }
+
+        & $vcpkgExe install libjpeg-turbo:${{ matrix.triplet }} libpng:${{ matrix.triplet }} zlib:${{ matrix.triplet }}
 
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
