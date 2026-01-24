@@ -48,7 +48,7 @@ jobs:
       run: |
         git clone https://github.com/microsoft/vcpkg.git vcpkg
         .\vcpkg\bootstrap-vcpkg.bat
-        .\vcpkg\vcpkg.exe install libjpeg-turbo:${{ matrix.triplet }}
+        .\vcpkg\vcpkg.exe install libjpeg-turbo:${{ matrix.triplet }} libpng:${{ matrix.triplet }} zlib:${{ matrix.triplet }}
 
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
