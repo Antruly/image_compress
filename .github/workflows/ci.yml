@@ -11,12 +11,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
             triplet: x64-linux
           - os: windows-latest
             triplet: x64-windows-static
+            generator_platform: x64
+          - os: windows-latest
+            triplet: x86-windows-static
+            generator_platform: Win32
           - os: macos-latest
             triplet: x64-osx
 
@@ -54,7 +57,13 @@ jobs:
       if: runner.os == 'Windows'
       shell: powershell
       run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
+        # Use generator platform when provided (e.g., Win32 for x86)
+        if ($env:GENERATOR_PLATFORM) {
+          $arch = $env:GENERATOR_PLATFORM
+        } else {
+          $arch = \"${{ matrix.generator_platform }}\"
+        }
+        cmake -S . -B build -A $arch -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
 
     - name: Configure CMake (non-Windows)
       if: runner.os != 'Windows'
