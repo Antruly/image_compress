@@ -9,6 +9,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     strategy:
       matrix:
         include:
@@ -64,9 +65,20 @@ jobs:
       env:
         VCPKG_ROOT: ${{ github.workspace }}\vcpkg
       run: |
-        git clone https://github.com/microsoft/vcpkg.git vcpkg
-        .\vcpkg\bootstrap-vcpkg.bat
-        .\vcpkg\vcpkg.exe install libjpeg-turbo:${{ matrix.triplet }} libpng:${{ matrix.triplet }} zlib:${{ matrix.triplet }}
+        $vcpkgDir = "${{ github.workspace }}\vcpkg"
+        if (-not (Test-Path $vcpkgDir)) {
+          Write-Host "Cloning vcpkg..."
+          git clone https://github.com/microsoft/vcpkg.git $vcpkgDir
+        } else {
+          Write-Host "vcpkg directory already exists, skipping clone."
+        }
+        if (-not (Test-Path (Join-Path $vcpkgDir 'vcpkg.exe'))) {
+          Write-Host "Bootstrapping vcpkg..."
+          & (Join-Path $vcpkgDir 'bootstrap-vcpkg.bat')
+        } else {
+          Write-Host "vcpkg.exe already present, skipping bootstrap."
+        }
+        & (Join-Path $vcpkgDir 'vcpkg.exe') install libjpeg-turbo:${{ matrix.triplet }} libpng:${{ matrix.triplet }} zlib:${{ matrix.triplet }}
 
     - name: Configure CMake (Windows)
       if: runner.os == 'Windows'
