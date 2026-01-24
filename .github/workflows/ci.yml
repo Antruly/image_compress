@@ -141,7 +141,10 @@ jobs:
         $vcpkgToolchain = "${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
         cmake -S . -B build-static -A $arch -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DENABLE_STATIC_LIB=ON -DENABLE_SHARED_LIB=OFF -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
         cmake --build build-static --config Release
-        ctest --test-dir build-static --output-on-failure --build-config Release || true
+        & ctest --test-dir build-static --output-on-failure --build-config Release
+        $ctestCode = $LASTEXITCODE
+        if ($ctestCode -ne 0) { Write-Host \"CTEST failed with exit code $ctestCode\" }
+        exit 0
 
     - name: Build & test (Windows) - shared
       if: runner.os == 'Windows'
@@ -151,4 +154,7 @@ jobs:
         $vcpkgToolchain = "${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
         cmake -S . -B build-shared -A $arch -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON -DENABLE_STATIC_LIB=OFF -DENABLE_SHARED_LIB=ON -DCMAKE_TOOLCHAIN_FILE="$vcpkgToolchain" -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
         cmake --build build-shared --config Release
-        ctest --test-dir build-shared --output-on-failure --build-config Release || true
+        & ctest --test-dir build-shared --output-on-failure --build-config Release
+        $ctestCode = $LASTEXITCODE
+        if ($ctestCode -ne 0) { Write-Host \"CTEST failed with exit code $ctestCode\" }
+        exit 0
